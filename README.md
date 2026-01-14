@@ -1,6 +1,8 @@
-# Agent Skills
+# Claude Skills
 
 A collection of skills I use with [Claude](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview).
+
+#TODO: generalize for all agents.
 
 ## Available Skills
 
