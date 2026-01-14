@@ -11,3 +11,4 @@ Thumbs.db
 
 # Packaged skills (keep source, not packages)
 *.skill
+*.zip
