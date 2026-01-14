@@ -113,7 +113,7 @@ Agents must verify their own work:
 
 - Unit tests alone are insufficient
 - End-to-end testing catches integration issues
-- Browser automation (Puppeteer, Playwright) for UI verification
+- Always use browser automation (Puppeteer, Playwright) for verifying UI changes
 - Always test as a user would before marking complete
 
 ```
@@ -197,7 +197,8 @@ If you must stop, ensure clean state: committed code, updated progress, clear no
 
 ## Additional References
 
-- **File formats** (sessions.md, progress.md, features.json): [references/file-formats.md](references/file-formats.md)
+- **File formats** (sessions.md, progress.md, features.json, decisions.json, settings.json): [references/file-formats.md](references/file-formats.md)
 - **Project templates** (CLAUDE.md, init.sh, system prompts): [references/templates.md](references/templates.md)
 - **Tool design principles**: [references/tool-design.md](references/tool-design.md)
 - **Runtime patterns** (decision logging, observe→formalize, prompt-native dev): [references/runtime-patterns.md](references/runtime-patterns.md)
+- **Settings patterns** (permissions, hooks, environment, multi-agent config): [references/settings-patterns.md](references/settings-patterns.md)

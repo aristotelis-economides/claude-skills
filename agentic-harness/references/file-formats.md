@@ -7,6 +7,8 @@ Detailed templates and examples for agentic harness state files.
 - [sessions.md](#sessionsmd)
 - [progress.md](#progressmd)
 - [features.json](#featuresjson)
+- [decisions.json](#decisionsjson)
+- [settings.json](#settingsjson)
 - [Per-Project Directory Structure](#per-project-directory-structure)
 
 ---
@@ -195,26 +197,257 @@ cat features.json | jq '.features[] | select(.passes == false) | .id' | head -1
 
 ---
 
-## Per-Project Directory Structure
+## decisions.json
 
-Keep agent state files separate from project files using a dedicated directory:
+Logs human decisions for runtime learning. See [references/runtime-patterns.md](runtime-patterns.md#decision-logging) for detailed usage.
+
+```json
+{
+  "decisions": [
+    {
+      "timestamp": "2025-01-13T14:32:00Z",
+      "context": "Agent asked whether to refactor auth module or add new feature",
+      "options_presented": ["Refactor first", "Add feature first", "Do both in parallel"],
+      "user_choice": "Refactor first",
+      "reasoning": "User mentioned tech debt was slowing them down",
+      "outcome": "Refactor completed, feature added more easily afterward"
+    },
+    {
+      "timestamp": "2025-01-12T09:15:00Z",
+      "context": "Agent proposed two API designs",
+      "options_presented": ["REST endpoints", "GraphQL schema"],
+      "user_choice": "REST endpoints",
+      "reasoning": "Team more familiar with REST",
+      "outcome": null
+    }
+  ]
+}
+```
+
+**Purpose:** Over time, patterns emerge that allow agents to pre-select likely preferences and reduce decision fatigue.
+
+---
+
+## settings.json
+
+Configuration for permissions, hooks, environment, and agent behavior. See [references/settings-patterns.md](settings-patterns.md) for comprehensive guide.
+
+### Minimal Example
+
+```json
+{
+  "$schema": "https://your-app.com/settings-schema.json",
+
+  "permissions": {
+    "deny": ["Bash(rm -rf:*)", "Read(.env*)"],
+    "allow": ["Bash(git status)", "Read(**/*.md)"],
+    "ask": ["Bash(git push:*)", "Write(**/*.ts)"]
+  },
+
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(.*\\.py)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "black ${TOOL_INPUT_FILE_PATH}"
+          }
+        ]
+      }
+    ]
+  },
+
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
+```
+
+### Settings Hierarchy
 
 ```
-user-project/
-├── .agent/                    # Agent state (or .nexus/, .claude/, etc.)
+1. .agent/settings.json          (Team - committed)
+2. .agent/settings.local.json    (Personal - gitignored)
+3. ~/.config/app/settings.json   (User global)
+```
+
+Higher priority settings override lower ones.
+
+---
+
+## Directory Structures
+
+### 1. Source Code Project Structure (Development Time)
+
+**When building your agentic application with a coding agent**, keep agent state files in `.agent/`:
+
+```
+my-agentic-app-source/         # Your source code repo
+├── .agent/                    # Coding agent's state (for building the app)
 │   ├── sessions.md            # Session log
 │   ├── progress.md            # Project state snapshot
 │   ├── features.json          # Feature tracking
-│   ├── decisions.json         # Human decision log (for runtime learning)
-│   └── sessions/              # Per-session debug logs (optional)
-│       ├── session-001.json
-│       └── session-002.json
-├── init.sh                    # Environment setup script
-├── ... (user's project files)
+│   └── .gitignore             # Ignore local agent state
+│
+├── src/                       # Your application source code
+│   ├── cli.ts                 # CLI entry point
+│   ├── agent/                 # Agent orchestration logic
+│   ├── tools/                 # Tool implementations
+│   └── config/                # Config loading logic
+│
+├── init.sh                    # Environment setup for development
+├── package.json
 └── .git/
 ```
 
-This separation:
-- Keeps agent files out of the user's way
-- Makes it easy to gitignore agent state if desired
-- Provides clear boundaries between project code and agent metadata
+**`.agent/.gitignore`:**
+```
+*.log
+*.tmp
+```
+
+**Purpose:** This is where the agent that's *building your application* tracks its progress. Think of it like Claude Code's session tracking while developing your app.
+
+---
+
+### 2. Installed Application Structure (Runtime)
+
+**When users run your built agentic application**, it should store settings and runtime state in standard locations:
+
+#### User-Global Settings (Application Config)
+
+```
+~/.config/<app-name>/          # Linux/macOS
+├── settings.json              # User's global settings
+├── cache/                     # Application cache
+└── logs/                      # Application logs
+
+# or on macOS:
+~/Library/Application Support/<app-name>/
+├── settings.json
+└── ...
+
+# or on Windows:
+C:\Users\<username>\AppData\Roaming\<app-name>\
+├── settings.json
+└── ...
+```
+
+**`settings.json` (user global):**
+```json
+{
+  "permissions": {
+    "deny": ["Bash(rm -rf:*)", "Read(.env*)"],
+    "allow": ["Bash(git status)"]
+  },
+  "env": {
+    "LOG_LEVEL": "info"
+  }
+}
+```
+
+**Purpose:** User's personal preferences that apply to all projects.
+
+#### Per-Project Settings (Where User Works)
+
+```
+~/users-work-project/          # User's actual work (NOT your source code)
+├── .myapp/                    # Your app's project-specific state
+│   ├── settings.json          # Project team settings (committed)
+│   ├── settings.local.json    # User's local overrides (gitignored)
+│   ├── sessions.md            # Session history (if applicable)
+│   ├── decisions.json         # Decision log for learning
+│   └── .gitignore             # Ignore local settings
+│
+├── ... (user's actual project files)
+└── .git/
+```
+
+**`.myapp/settings.json` (project team settings):**
+```json
+{
+  "permissions": {
+    "deny": ["Write(secrets/**)"],
+    "allow": ["Bash(npm run test)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(.*\\.ts)",
+        "hooks": [{"type": "command", "command": "npm run lint"}]
+      }
+    ]
+  }
+}
+```
+
+**`.myapp/settings.local.json` (user personal overrides):**
+```json
+{
+  "env": {
+    "GITHUB_TOKEN": "ghp_..."
+  }
+}
+```
+
+**`.myapp/.gitignore`:**
+```
+settings.local.json
+*.log
+*.tmp
+sessions.md
+decisions.json
+```
+
+**Purpose:** Project-specific configuration and runtime state when your app is running on a user's project.
+
+#### System-Wide Managed Settings (Enterprise/Organizational)
+
+```
+# Linux
+/etc/<app-name>/
+├── managed-settings.json
+
+# macOS
+/Library/Application Support/<app-name>/
+├── managed-settings.json
+
+# Windows
+C:\ProgramData\<app-name>\
+├── managed-settings.json
+```
+
+**Purpose:** Organization-enforced policies that cannot be overridden by users.
+
+---
+
+### Settings Resolution Order (Runtime)
+
+When your agentic application runs, it loads settings in this order (highest priority first):
+
+```
+1. /etc/<app-name>/managed-settings.json           (Organizational - cannot override)
+    ↓
+2. ~/project/.myapp/settings.local.json            (User's project-local secrets)
+    ↓
+3. ~/project/.myapp/settings.json                  (Team's project settings)
+    ↓
+4. ~/.config/<app-name>/settings.json              (User's global preferences)
+    ↓
+5. Built-in defaults                                (Hardcoded in your app)
+```
+
+---
+
+### Summary
+
+| Context | Location | Purpose | Committed to Git? |
+|---------|----------|---------|-------------------|
+| **Development** | `my-app-source/.agent/` | Coding agent's state while building your app | No (agent workspace) |
+| **Runtime: User Global** | `~/.config/<app-name>/` | User's personal app preferences | N/A (not in repo) |
+| **Runtime: Project Team** | `~/project/.myapp/settings.json` | Team's shared project config | Yes |
+| **Runtime: Project Local** | `~/project/.myapp/settings.local.json` | User's project-specific secrets | No (gitignored) |
+| **Runtime: Organizational** | `/etc/<app-name>/` | Enterprise policies | N/A (system-wide) |
+
+**Key Insight:** `.agent/` is for *building* your app. `~/.config/<app-name>/` and `.myapp/` are for *running* your app.
