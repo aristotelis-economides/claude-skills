@@ -2,6 +2,18 @@
 
 Practical scaffolding for agentic projects. Copy and adapt these to your needs.
 
+For file format templates (sessions.md, progress.md, features.json), see [file-formats.md](file-formats.md).
+
+## Table of Contents
+
+- [CLAUDE.md Template](#claudemd-template)
+- [init.sh Template](#initsh-template)
+- [System Prompts](#system-prompts)
+- [Approval Patterns](#approval-patterns)
+- [Completion Signals](#completion-signals)
+
+---
+
 ## CLAUDE.md Template
 
 ```markdown
@@ -19,6 +31,7 @@ Practical scaffolding for agentic projects. Copy and adapt these to your needs.
 src/           # Source code
 tests/         # Test files
 docs/          # Documentation
+.agent/        # Agent state files
 ```
 
 ## Development
@@ -41,8 +54,9 @@ docs/          # Documentation
 ## Working Conventions
 
 ### Before Making Changes
-- Read progress.md for current state
-- Check features.json for priorities
+- Read .agent/sessions.md for recent session history
+- Read .agent/progress.md for current state
+- Check .agent/features.json for priorities
 - Run basic integration test
 
 ### Code Style
@@ -53,96 +67,15 @@ docs/          # Documentation
 ### After Making Changes
 - Run tests
 - Commit with descriptive message
-- Update progress.md
-- Update features.json if feature complete
-
-## Current State
-[Updated by working agent each session]
+- Add session entry to TOP of .agent/sessions.md
+- Update .agent/progress.md
+- Update .agent/features.json if feature complete
 
 ## Known Issues
 [List of known bugs or limitations]
 ```
 
-## features.json Template
-
-```json
-{
-  "project": "project-name",
-  "created": "2025-01-01",
-  "features": [
-    {
-      "id": "core-001",
-      "category": "core",
-      "priority": 1,
-      "description": "Basic project setup and configuration",
-      "acceptance_criteria": [
-        "Project structure created",
-        "Dependencies installed",
-        "Basic configuration works"
-      ],
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "auth-001",
-      "category": "authentication",
-      "priority": 2,
-      "description": "User can create account and log in",
-      "acceptance_criteria": [
-        "Registration form works",
-        "Login form works",
-        "Session persists across page reloads",
-        "Logout clears session"
-      ],
-      "passes": false,
-      "notes": ""
-    }
-  ],
-  "meta": {
-    "total": 2,
-    "passing": 0,
-    "failing": 2
-  }
-}
-```
-
-## progress.md Template
-
-```markdown
-# Progress Log
-
-## Project Status
-- **Started**: [date]
-- **Last Updated**: [date]
-- **Features Complete**: 0/N
-
-## Current Session
-### Working On
-[What the current session is focused on]
-
-### Blockers
-[Any issues preventing progress]
-
-## Session History
-
-### Session N (date)
-- **Completed**: [list of completed items]
-- **Commits**: [commit hashes and messages]
-- **Notes**: [any relevant observations]
-
-## Next Steps
-1. [Priority item 1]
-2. [Priority item 2]
-3. [Priority item 3]
-
-## Architecture Decisions
-- [Decision 1]: [Rationale]
-- [Decision 2]: [Rationale]
-
-## Known Issues
-- [ ] [Issue description]
-- [ ] [Issue description]
-```
+---
 
 ## init.sh Template
 
@@ -179,97 +112,103 @@ echo "=== Initialization Complete ==="
 echo "Ready for development"
 ```
 
-## System Prompt: Initializer Agent
+---
+
+## System Prompts
+
+### Initializer Agent
 
 ```
-You are initializing a new project for autonomous development. Your task is to set up scaffolding that enables productive work across many future sessions.
+You are initializing a new project for autonomous development. Set up scaffolding that enables productive work across many future sessions.
 
-Create the following files:
+Create the following:
 
-1. **CLAUDE.md** - Project context file with:
+1. **CLAUDE.md** - Project context:
    - Project overview and purpose
    - Tech stack and dependencies
-   - Directory structure explanation
+   - Directory structure
    - Development commands (setup, run, test)
-   - Coding conventions and patterns
-   - Current state section (to be updated each session)
+   - Coding conventions
 
-2. **features.json** - Structured feature specifications:
+2. **.agent/features.json** - Feature specifications:
    - Break requirements into testable features
-   - Each feature has: id, category, description, acceptance_criteria, passes (boolean)
-   - Be comprehensive - 20-50+ features for substantial projects
+   - Each feature: id, description, testSteps, passes (boolean)
    - Mark all as passes: false initially
-   - Order by dependency (foundational features first)
+   - Order by dependency (foundational first)
 
-3. **progress.md** - Session tracking:
-   - Current status overview
-   - Session history template
-   - Next steps section
-   - Known issues tracker
+3. **.agent/sessions.md** - Session log:
+   - HOW TO READ and HOW TO UPDATE instructions at top
+   - Empty session log (will be filled by working agents)
 
-4. **init.sh** - Environment setup script:
+4. **.agent/progress.md** - Project state:
+   - Current phase
+   - Completed work section (empty initially)
+   - Next steps
+   - Known issues
+
+5. **init.sh** - Environment setup:
    - Install dependencies
    - Start required services
    - Run basic health check
-   - Print ready status
 
-After creating these files:
+After creating files:
 - Initialize git repository
 - Make initial commit: "chore: initialize project scaffolding"
-- Report summary of what was created
 ```
 
-## System Prompt: Working Agent
+### Working Agent
 
 ```
-You are continuing work on an ongoing project. This is session N of a multi-session task.
+You are continuing work on an ongoing project.
 
 ## Starting a Session
 
-1. Orient yourself:
-   - `pwd` to confirm location
-   - Read CLAUDE.md for project context
-   - Read progress.md for recent work
-   - `git log --oneline -10` for recent commits
-   - Check features.json for incomplete features
+1. Orient:
+   - Read .agent/sessions.md (head -50) for recent history
+   - Read .agent/progress.md for current state
+   - Check incomplete features in .agent/features.json
+   - git log --oneline -10 for recent commits
 
 2. Verify environment:
-   - Run `./init.sh` to start services
-   - Run a basic integration test to verify nothing is broken
+   - Run ./init.sh
+   - Run basic integration test
    - If broken, fix before proceeding
 
-3. Select ONE feature:
-   - Choose highest priority incomplete feature
-   - Note your selection in progress.md
+3. Select ONE feature where passes: false
 
 ## During Work
 
-- Make incremental commits as you complete logical units
-- If you encounter issues, document in progress.md
-- Run tests frequently to catch regressions
-- If a feature is more complex than expected, break it into sub-tasks
+- Commit incrementally as you complete logical units
+- Run tests frequently
+- If feature is complex, break into sub-tasks
 
 ## Ending a Session
 
-Before your context ends:
 1. Ensure all changes compile/run without errors
-2. `git add -A && git commit -m "descriptive message"`
-3. Update progress.md:
-   - What was completed
-   - What remains
-   - Any blockers or issues
-4. Update features.json if feature passes all acceptance criteria
-5. Push if remote is configured
+2. git add -A && git commit -m "descriptive message"
+3. Add session block to TOP of .agent/sessions.md
+4. Update .agent/progress.md
+5. Set passes: true in .agent/features.json (only modify passes field, never edit tests)
 
-## Important Rules
+## Auto-Continue
 
-- Never remove or edit feature descriptions in features.json—only modify `passes` and `notes`
-- Always verify features end-to-end before marking complete
-- If interrupted, leave environment in working state
-- Be specific in progress notes—next session has no memory of this one
+After completing a feature:
+- If incomplete features remain AND no blockers → continue to next feature
+- Do NOT ask "should I continue?" — just continue
+
+## Stop When
+
+- All features pass
+- Blocker requiring human input
+- Tests fail repeatedly and cannot be fixed
+- Need requirement clarification
 ```
 
-## Approval Patterns by Risk Level
+---
+
+## Approval Patterns
+
+Match approval requirements to risk and reversibility:
 
 | Stakes | Reversibility | Pattern | Example |
 |--------|---------------|---------|---------|
@@ -278,7 +217,9 @@ Before your context ends:
 | High | Easy | Suggest + apply | Code refactoring |
 | High | Hard | Explicit approval | Sending emails, payments |
 
-## Completion Signal Pattern
+---
+
+## Completion Signals
 
 Agent should explicitly signal completion rather than relying on heuristics:
 

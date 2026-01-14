@@ -15,17 +15,17 @@ Complex projects spanning multiple context windows require distinct phases:
 
 **Initializer Agent (first context window only):**
 - Analyzes requirements and creates comprehensive feature list
-- Sets up environment scaffolding (init.sh, progress tracking, git repo)
+- Sets up environment scaffolding (init.sh, state files, git repo)
 - Writes structured tests/specifications in JSON format
 - Creates initial commit as baseline
 
 **Working Agent (all subsequent windows):**
-- Reads progress files and git history to orient
+- Reads session log and progress to orient
 - Selects ONE feature/task to complete
 - Makes incremental progress with commits
 - Leaves environment in clean, documented state
 
-### The Agent-Native Principles
+### Agent-Native Principles
 
 1. **Parity**: Agent can achieve anything users can through the UI via tools
 2. **Granularity**: Tools are atomic primitives; features are outcomes achieved by agents in loops
@@ -36,68 +36,19 @@ Complex projects spanning multiple context windows require distinct phases:
 
 ### Required Artifacts
 
-Create these in the first context window:
-
 ```
 project/
 ├── init.sh              # Environment setup, server start, basic tests
-├── progress.md          # Freeform notes on what's been done
-├── features.json        # Structured feature list with pass/fail status
-└── .git/                # Version control for checkpoints and history
+├── progress.md          # Living snapshot of current project state
+├── sessions.md          # Chronological session log (newest first)
+├── features.json        # Structured feature list with phases
+└── .git/                # Version control for checkpoints
 ```
 
-### Feature List Format (JSON, not Markdown)
-
-Use JSON to prevent accidental modification of test content:
-
-```json
-{
-  "features": [
-    {
-      "id": "auth-001",
-      "category": "authentication",
-      "description": "User can log in with email and password",
-      "steps": [
-        "Navigate to login page",
-        "Enter valid credentials",
-        "Verify redirect to dashboard"
-      ],
-      "passes": false
-    }
-  ]
-}
-```
-
-Instruct the agent: "Only modify the `passes` field. Never remove or edit test descriptions."
-
-### Progress Tracking
-
-The progress file serves as working memory across sessions:
-
-```markdown
-# Progress
-
-## Current State
-- Authentication complete and tested
-- Dashboard layout implemented
-- API integration in progress
-
-## Last Session
-- Completed: User login flow
-- Committed: abc123 "feat: implement login with session management"
-
-## Next Priority
-- Complete API data fetching
-- Add error handling for network failures
-
-## Known Issues
-- Rate limiting not yet implemented
-- Mobile styles need attention
-```
+For detailed file templates and examples, see [references/file-formats.md](references/file-formats.md).
 
 ### Git as State Checkpoint
 
-Git provides recoverable history:
 - Commit after each completed feature
 - Use descriptive messages: `feat: implement [feature]` or `fix: resolve [issue]`
 - Agent can `git diff` to see recent changes
@@ -107,137 +58,69 @@ Git provides recoverable history:
 
 ### Starting a New Session
 
-Agent should always begin with orientation:
-
 ```
 1. pwd                                    # Confirm working directory
-2. cat progress.md                        # Read what's been done
-3. cat features.json | jq '.features[] | select(.passes==false) | .id' | head -5
-4. git log --oneline -10                  # Review recent commits
-5. ./init.sh                              # Start environment
-6. [Run basic integration test]           # Verify nothing is broken
-7. Select ONE incomplete feature to work on
+2. head -50 sessions.md                   # Read recent session history
+3. cat progress.md                        # Understand current project state
+4. cat features.json | jq '.features[] | select(.passes == false) | .id' | head -5
+5. git log --oneline -10                  # Review recent commits
+6. ./init.sh                              # Start environment
+7. [Run basic integration test]           # Verify nothing is broken
+8. Select ONE incomplete feature to work on
 ```
 
 ### Ending a Session
 
-Before context ends or task completes:
-
 ```
 1. Ensure all changes compile/run without errors
 2. git add -A && git commit -m "descriptive message"
-3. Update progress.md with what was done
-4. Update features.json passes field if feature complete
-5. Note any blockers or next steps in progress.md
+3. Add new session block to TOP of sessions.md
+4. Update progress.md to reflect current state
+5. Set passes: true in features.json if feature verified
 ```
 
-### Context Window Management
+### Auto-Continue Behavior
 
-- **Start fresh over compacting** when possible—agents discover state well from filesystem
-- **Checkpoint frequently** if context may be interrupted
-- **Don't stop early** due to context concerns; save state and let next session continue
+After completing each feature, automatically:
 
-## Tool Design
+1. Run verification (typecheck, build, tests)
+2. Commit with descriptive message
+3. Update sessions.md and progress.md
+4. Set passes: true in features.json
+5. **If incomplete features remain AND no blockers → continue to next feature**
 
-### Atomic Over Bundled
+**Only stop when:**
+- All features pass
+- Hit a blocker requiring human input
+- Tests fail repeatedly and you cannot fix them
+- Need clarification on requirements
 
-**Less granular (bundles judgment into tool):**
-```
-classify_and_organize_files(files)
-→ You wrote the decision logic
-→ Agent executes your code
-→ To change behavior, refactor code
-```
+**Do NOT ask "should I continue?"—just continue if conditions allow.**
 
-**More granular (agent makes decisions):**
-```
-Tools: read_file, write_file, move_file, list_dir
-Prompt: "Organize downloads by file type..."
-→ Agent decides how to organize
-→ To change behavior, edit prompt
-```
+### State Recovery
 
-### Tool Design Principles
+When finding uncommitted changes or unclear state:
 
-- **Atomic primitives first**: Start with bash, file operations, basic storage
-- **Domain tools for vocabulary**: `create_note` teaches what "note" means in your system
-- **Keep primitives available**: Domain tools are shortcuts, not gates
-- **CRUD completeness**: Every entity needs create, read, update, delete operations
-
-### When to Add Domain Tools
-
-Add domain-specific tools when:
-- Establishing vocabulary (what is a "note", "task", "project" in this system)
-- Adding guardrails for destructive operations
-- Optimizing hot paths for speed/cost
-- Preventing common errors through validation
-
-Domain tools should represent ONE conceptual user action. Include mechanical validation, but judgment about *what* to do belongs in prompts.
-
-## Files as Universal Interface
-
-Files are the most battle-tested agent interface:
-- Agents know bash (`cat`, `grep`, `mv`, `mkdir`) fluently
-- Users can inspect and edit agent work directly
-- State is portable, syncable, self-documenting
-- No black boxes
-
-### Directory Conventions
-
-```
-entity_type/entity_id/
-├── primary content
-├── metadata.json
-└── agent_log.md
-```
-
-Use lowercase with underscores. Markdown for human-readable content; JSON for structured data.
-
-### Context File Pattern
-
-A context.md or CLAUDE.md file at project root provides session context:
-
-```markdown
-# Context
-
-## What This Is
-[Project description and purpose]
-
-## Available Resources
-- 12 notes in /notes
-- 3 active projects in /projects
-
-## Recent Activity
-- Completed authentication (2 hours ago)
-- Fixed login bug (yesterday)
-
-## Guidelines
-- Run tests before committing
-- Keep functions under 50 lines
-- Use existing patterns from /src/utils
-
-## Current State
-- Feature X in progress
-- Blocked on API documentation
-```
+1. `git status` and `git diff` to see what's changed
+2. `head -30 sessions.md` to see last known state
+3. Run typecheck/build to assess what works
+4. Either: complete in-progress work, or `git checkout .` to revert
+5. Update sessions.md to reflect actual state
 
 ## Testing and Verification
 
-### Self-Verification is Critical
-
 Agents must verify their own work:
+
 - Unit tests alone are insufficient
 - End-to-end testing catches integration issues
 - Browser automation (Puppeteer, Playwright) for UI verification
 - Always test as a user would before marking complete
 
-### Verification Prompt Pattern
-
 ```
 After implementing a feature:
 1. Run the relevant test suite
-2. Manually verify the feature end-to-end as a user would
-3. Only mark as complete after successful verification
+2. Verify the feature end-to-end as a user would
+3. Only mark complete after successful verification
 4. If verification fails, fix and re-verify before continuing
 ```
 
@@ -245,48 +128,28 @@ After implementing a feature:
 
 ### Subagent Orchestration
 
-Claude can delegate to subagents when beneficial. Ensure:
-- Subagent tools are well-defined with clear scope
+- Subagent tools should have well-defined scope
 - Let orchestrating agent decide when to delegate
 - Subagent results should be verifiable
 
 ### Parallel Tool Execution
 
-Maximize parallel tool calls when operations are independent:
-- Reading multiple files simultaneously
-- Running independent bash commands
-- Searching multiple sources
+Maximize parallel tool calls when operations are independent (reading multiple files, running independent commands). Sequential execution when dependencies exist.
 
-Sequential execution when dependencies exist between calls.
+## Anti-Patterns and Failure Modes
 
-## Anti-Patterns
+**Avoid:**
+- **Agent as router**: Using agent just to route to functions removes judgment
+- **Request/response thinking**: Agent should pursue outcomes until complete
+- **Workflow-shaped tools**: `analyze_and_organize()` bundles judgment; use primitives
+- **Context starvation**: Agent doesn't know what exists or what's been done
 
-### Avoid These Patterns
-
-**Agent as router**: Using agent just to route to functions removes judgment
-**Request/response thinking**: Missing the loop—agent should pursue outcomes until complete
-**Workflow-shaped tools**: `analyze_and_organize()` bundles judgment; break into primitives
-**Orphan UI actions**: Users can do things agent cannot achieve
-**Context starvation**: Agent doesn't know what exists or what's been done
-**Heuristic completion**: Detect completion explicitly, not through heuristics
-**Happy path in code**: Let agent handle edge cases with judgment
-
-### Failure Modes to Prevent
-
-1. **One-shotting**: Trying to complete everything at once
-   - Fix: Enforce incremental, feature-by-feature progress
-
-2. **Premature completion**: Declaring done without verification
-   - Fix: Require end-to-end testing before marking complete
-
-3. **Context loss**: New session doesn't know what happened
-   - Fix: Progress files, git history, structured feature tracking
-
-4. **Unclean state**: Leaving bugs, half-implemented features
-   - Fix: Commit only working code, document known issues
-
-5. **Test gaming**: Hard-coding to pass specific tests
-   - Fix: Emphasize general solutions, verify with varied inputs
+**Prevent:**
+1. **One-shotting** → Enforce incremental, feature-by-feature progress
+2. **Premature completion** → Require end-to-end testing before marking complete
+3. **Context loss** → Progress files, git history, structured feature tracking
+4. **Unclean state** → Commit only working code, document known issues
+5. **Test gaming** → Emphasize general solutions, verify with varied inputs
 
 ## Prompt Patterns
 
@@ -294,12 +157,13 @@ Sequential execution when dependencies exist between calls.
 
 ```
 You are setting up a new project. Your job is to:
-1. Analyze the requirements and create a comprehensive feature list in features.json
-2. Create init.sh to set up the environment and run basic tests
-3. Create progress.md for tracking work across sessions
-4. Make an initial git commit as a baseline
+1. Analyze requirements and create comprehensive feature list in features.json
+2. Create init.sh for environment setup and basic tests
+3. Create sessions.md for logging session history
+4. Create progress.md for tracking overall project state
+5. Make initial git commit as baseline
 
-Write features as testable specifications. Mark all as passes: false initially.
+Write features as testable specifications. Mark all as passes: false.
 Future sessions will implement these one at a time.
 ```
 
@@ -307,16 +171,19 @@ Future sessions will implement these one at a time.
 
 ```
 This is a continuation of ongoing work. Start by:
-1. Read progress.md and recent git history
-2. Run init.sh to start the environment
-3. Run a basic integration test to verify nothing is broken
-4. Select ONE incomplete feature from features.json
+1. Read sessions.md (head -50) for recent session history
+2. Read progress.md for current project state
+3. Run init.sh to start the environment
+4. Run basic integration test to verify nothing is broken
+5. Select ONE feature where passes: false
 
 Work on that single feature until complete. Before ending:
 - Ensure code works without errors
 - Commit with descriptive message
-- Update progress.md with what was done
-- Update features.json if feature is complete
+- Add new session block to TOP of sessions.md
+- Update progress.md to reflect current state
+- Set passes: true in features.json (only modify passes field, never edit tests)
+- If incomplete features remain and no blockers, continue to next feature
 ```
 
 ### For Maximum Persistence
@@ -327,3 +194,10 @@ Do not stop tasks early due to context concerns. Save progress and continue.
 Be as persistent and autonomous as possible. Complete features fully.
 If you must stop, ensure clean state: committed code, updated progress, clear notes.
 ```
+
+## Additional References
+
+- **File formats** (sessions.md, progress.md, features.json): [references/file-formats.md](references/file-formats.md)
+- **Project templates** (CLAUDE.md, init.sh, system prompts): [references/templates.md](references/templates.md)
+- **Tool design principles**: [references/tool-design.md](references/tool-design.md)
+- **Runtime patterns** (decision logging, observe→formalize, prompt-native dev): [references/runtime-patterns.md](references/runtime-patterns.md)

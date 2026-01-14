@@ -1,10 +1,6 @@
 # Claude Skills
 
-A collection of skills for extending Claude's capabilities in agentic workflows.
-
-## What are Skills?
-
-Skills are modular packages that provide Claude with specialized knowledge, workflows, and tools for specific domains. They transform Claude from a general-purpose assistant into a specialized agent equipped with procedural knowledge.
+A collection of skills I use with [Claude]((https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)).
 
 ## Available Skills
 
@@ -12,20 +8,58 @@ Skills are modular packages that provide Claude with specialized knowledge, work
 |-------|-------------|
 | [agentic-harness](./agentic-harness/) | Design principles for building effective agentic systems and agent-native applications. Use when initializing CLAUDE.md files, designing agent architectures, or setting up long-running autonomous coding projects. |
 
-## Using Skills
+## Installation
 
-### With Claude Code
+### Claude Code
 
-Place skill directories in your project or reference them in your CLAUDE.md:
+Add this repo as a skill source in your `~/.claude/settings.json`:
+
+```json
+{
+  "skills": [
+    "/path/to/claude-skills"
+  ]
+}
+```
+
+Or reference specific skills in your project's `CLAUDE.md`:
 
 ```markdown
 ## Skills
-Read `/path/to/skills/agentic-harness/SKILL.md` when setting up new projects.
+Read `/path/to/claude-skills/agentic-harness/SKILL.md` when setting up new agentic projects.
 ```
 
-### With Claude.ai
+### Claude.ai
 
 Skills can be uploaded as .skill files (zip archives) to Claude.ai's skills feature.
+
+## Example: Starting a New Agentic Project
+
+With Claude Code, start a new project and trigger the skill:
+
+```bash
+# Create project directory
+mkdir my-agentic-app && cd my-agentic-app
+
+# Start Claude Code
+claude
+
+# Then tell Claude:
+# "Set up this project for autonomous multi-session development.
+#  Use the agentic-harness skill to create the scaffolding."
+```
+
+Claude will read the skill and create:
+- `features.json` with testable feature specifications
+- `sessions.md` for session logging
+- `progress.md` for project state tracking
+- `init.sh` for environment setup
+- Initial git commit
+
+Subsequent sessions start with:
+```
+"Continue working on this project. Read sessions.md and progress.md to orient, then pick up where the last session left off."
+```
 
 ## Skill Structure
 
