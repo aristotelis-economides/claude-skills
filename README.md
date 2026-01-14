@@ -1,6 +1,6 @@
-# Claude Skills
+# Agent Skills
 
-A collection of skills I use with [Claude]((https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)).
+A collection of skills I use with [Claude](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview).
 
 ## Available Skills
 
@@ -17,7 +17,7 @@ Add this repo as a skill source in your `~/.claude/settings.json`:
 ```json
 {
   "skills": [
-    "/path/to/claude-skills"
+    "/path/to/agent-skills"
   ]
 }
 ```
@@ -26,7 +26,7 @@ Or reference specific skills in your project's `CLAUDE.md`:
 
 ```markdown
 ## Skills
-Read `/path/to/claude-skills/agentic-harness/SKILL.md` when setting up new agentic projects.
+Read `/path/to/agent-skills/agentic-harness/SKILL.md` when setting up new agentic projects.
 ```
 
 ### Claude.ai
